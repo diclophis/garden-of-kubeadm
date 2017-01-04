@@ -1,24 +1,31 @@
 #!/usr/bin/env ruby
 
-Haconiwa::Base.define do |config|
-  config.name = "new-haconiwa001" # to be hostname
+Haconiwa.define do |config|
+  # The container name and container's hostname:
+  config.name = "new-haconiwa001"
 
-	root = Pathname.new("/var/tmp/deb001")
+  # The first process when invoking haconiwa run:
+  # config.init_command = "/sbin/init"
 
-  #config.bootstrap do |b|
-  #  b.strategy = "debootstrap"
-  #  b.strategy = "debootstrap"
-  #  b.variant = "minbase"
-  #  b.debian_release = "jessie"
-  #	b.mirror_url = "http://ftp.jp.debian.org/debian/"
-  #end
+  # If your first process is a daemon, please explicitly daemonize by:
+  # config.daemonize!
 
+  # If you want to emit command's stdout/err to files, uncomment here
+  # This is active only on daemon mode:
+  # config.command.set_stdout(file: "/var/log/haconiwa-container.stdout")
+  # config.command.set_stderr(file: "/var/log/haconiwa-container.stderr")
+
+  # The rootfs location on your host OS
+  # Pathname class is useful:
+  root = Pathname.new("/var/tmp/deb001")
+  config.chroot_to root
+
+  # The bootstrap process...
+  # Choose lxc, debootstrap, git-clone, shell or mruby:
   config.bootstrap do |b|
-    b.project_name = "ubuntu-lxc-boot001"
     b.strategy = "lxc"
     b.os_type = "ubuntu"
-	end
-
+  end
 
   config.provision do |p|
     p.run_shell "env"
@@ -29,40 +36,75 @@ Haconiwa::Base.define do |config|
     p.run_shell "apt-key add /var/tmp/apt-key.gpg"
     p.run_shell "echo deb http://apt.kubernetes.io/ kubernetes-xenial main | tee /etc/apt/sources.list.d/kubernetes.list"
     p.run_shell "apt-get -y -o Debug::Acquire::http=true update"
-    p.run_shell "DEBIAN_FRONTEND=nonintaractive apt-get install -y docker.io kubelet kubeadm kubectl kubernetes-cni"
+    p.run_shell "DEBIAN_FRONTEND=nonintaractive apt-get install -y linux-image-4.4.0-57-generic docker.io kubelet kubeadm kubectl kubernetes-cni"
+    #p.run_shell "kubeadm init"
   end
 
-  #config.cgroup["cpu.shares"] = 2048
-  #config.cgroup["memory.limit_in_bytes"] = 256 * 1024 * 1024
-  #config.cgroup["pids.max"] = 1024
+  # Check that the required binary is installed(lxc-create / debootstrap)
 
+  # mount point configuration:
+  config.add_mount_point "tmpfs", to: root.join("tmp"), fs: "tmpfs"
+  config.add_mount_point "devpts", to: root.join("dev", "pts"), fs: "devpts"
+
+  # Share network etc files from host to contianer
+  # You can reuse /etc/netns/${netnsname}/* files:
+  # config.mount_network_etc(root, host_root: "/etc")
+
+  # more mount point configuration example:
+  # config.add_mount_point root, to: root, readonly: true
+  # config.add_mount_point "/lib64", to: root.join("lib64"), readonly: true
+
+  # Re-mount specific filesystems under new container namespace
+  # These are recommended when namespaces such as pid and net are unshared:
   config.mount_independent "procfs"
   config.mount_independent "sysfs"
-  config.mount_independent "procfs"
-  config.mount_independent "sysfs"
+  config.mount_independent "devtmpfs"
+  config.mount_independent "devpts"
+  config.mount_independent "shm"
 
-  #config.add_mount_point "/var/another/root/etc", to: "/var/your_rootfs/etc", readonly: true
-  #config.add_mount_point "/var/another/root/home", to: "/var/your_rootfs/home"
-
-
-  #config.chroot_to "/var/your_rootfs"
-
+  # The namespaces to unshare:
+  config.namespace.unshare "mount"
   config.namespace.unshare "ipc"
   config.namespace.unshare "uts"
-  config.namespace.unshare "mount"
   config.namespace.unshare "pid"
 
-  #config.capabilities.allow :all
-  #config.capabilities.drop "cap_sys_admin"
+  # You can use existing namespace via symlink file. e.g.:
+  # config.namespace.enter "net", via: "/var/run/netns/sample001"
 
-	#config.add_mount_point root, to: root
-  #config.mount_independent_procfs
+  # The cgroup configuration example:
+  # config.cgroup["cpu.cfs_period_us"] = 100000
+  # config.cgroup["cpu.cfs_quota_us"]  =  30000
 
-  config.chroot_to root
+  # The linux kernel capability:
+  # Haconiwa has default capability whitelist and applies it when there's no config
+  # If you want to use customized blacklist, first uncomment below:
+  #config.capabilities.reset_to_privileged!
 
-  config.environ = {
-    "DEBIAN_FRONTEND" => "nonintaractive",
-    "TERM" => "xterm",
-    "LANG" => "c"
-  }
+  # Then declare:
+  # config.capabilities.allow :all
+  # config.capabilities.drop "cap_sys_time"
+  # config.capabilities.drop "cap_kill"
+
+  # When you use whitelist capability, set:
+  config.capabilities.allow "cap_sys_admin"
+  config.capabilities.allow "cap_kill"
+  config.capabilities.allow "cap_fsetid"
+  config.capabilities.allow "cap_chown"
+  config.capabilities.allow "cap_sys_time"
+  config.capabilities.allow "cap_sys_module"
+  config.capabilities.allow "cap_sys_resource"
+  config.capabilities.allow "cap_net_admin"
+  config.capabilities.allow "cap_net_bind_service"
+
+  # Specify uid/gid who owns container process:
+  # config.uid = "vagrant"
+  # config.gid = "vagrant"
+
+  # The resource limit:
+  # config.resource.set_limit(:CPU, 10 * 60)
+  # config.resource.set_limit(:NOFILE, 30)
+
+  # More examples and informations, please visit:
+  # https://github.com/haconiwa/haconiwa/tree/master/sample
+  # Enjoy your own container!
 end
