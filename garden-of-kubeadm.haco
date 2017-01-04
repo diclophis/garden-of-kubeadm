@@ -48,7 +48,13 @@ Haconiwa.define do |config|
 
   # Share network etc files from host to contianer
   # You can reuse /etc/netns/${netnsname}/* files:
-  # config.mount_network_etc(root, host_root: "/etc")
+  config.mount_network_etc(root, host_root: "/etc")
+
+  config.network_mountpoint << MountPoint.new("/var/run/resolvconf/resolv.conf", to: "#{root}/etc/resolvconf/resolv.conf.d/tail")
+
+  #config.network_mountpoint << MountPoint.new("#{from}/hosts",       to: "#{root}/etc/hosts")
+
+
 
   # more mount point configuration example:
   # config.add_mount_point root, to: root, readonly: true
@@ -59,7 +65,7 @@ Haconiwa.define do |config|
   config.mount_independent "procfs"
   config.mount_independent "sysfs"
   config.mount_independent "devtmpfs"
-  config.mount_independent "devpts"
+  #config.mount_independent "devpts"
   config.mount_independent "shm"
 
   # The namespaces to unshare:
@@ -78,23 +84,44 @@ Haconiwa.define do |config|
   # The linux kernel capability:
   # Haconiwa has default capability whitelist and applies it when there's no config
   # If you want to use customized blacklist, first uncomment below:
-  #config.capabilities.reset_to_privileged!
+  config.capabilities.reset_to_privileged!
 
   # Then declare:
-  # config.capabilities.allow :all
+  config.capabilities.allow :all
+
   # config.capabilities.drop "cap_sys_time"
   # config.capabilities.drop "cap_kill"
 
   # When you use whitelist capability, set:
-  config.capabilities.allow "cap_sys_admin"
-  config.capabilities.allow "cap_kill"
-  config.capabilities.allow "cap_fsetid"
-  config.capabilities.allow "cap_chown"
-  config.capabilities.allow "cap_sys_time"
-  config.capabilities.allow "cap_sys_module"
-  config.capabilities.allow "cap_sys_resource"
-  config.capabilities.allow "cap_net_admin"
-  config.capabilities.allow "cap_net_bind_service"
+  #GOOD??
+  #config.capabilities.allow "cap_sys_admin"
+  #config.capabilities.allow "cap_kill"
+  #config.capabilities.allow "cap_fsetid"
+  #config.capabilities.allow "cap_chown"
+  #config.capabilities.allow "cap_sys_time"
+  #config.capabilities.allow "cap_sys_module"
+  #config.capabilities.allow "cap_sys_resource"
+  #config.capabilities.allow "cap_net_admin"
+  #config.capabilities.allow "cap_net_bind_service"
+  #config.capabilities.allow "cap_sys_chroot"
+  #config.capabilities.allow "cap_sys_nice"
+  #config.capabilities.allow "cap_net_broadcast"
+  #config.capabilities.allow "cap_setfcap"
+  #config.capabilities.allow "cap_setgid"
+  #config.capabilities.allow "cap_setuid"
+  #config.capabilities.allow "cap_fowner"
+  #config.capabilities.allow "cap_lease"
+  #config.capabilities.allow "cap_mknod"
+  #config.capabilities.allow "cap_audit_write"
+  #config.capabilities.allow "cap_sys_nice"
+  #config.capabilities.allow "cap_ipc_lock"
+  #config.capabilities.allow "cap_ipc_owner"
+  #config.capabilities.allow "cap_net_raw"
+  #config.capabilities.allow "cap_setpcap"
+  #config.capabilities.allow "cap_sys_ptrace"
+  #config.capabilities.allow "cap_sys_rawio"
+  #config.capabilities.allow "cap_syslog"
+
 
   # Specify uid/gid who owns container process:
   # config.uid = "vagrant"
