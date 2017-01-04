@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+Haconiwa::Base.define do |config|
+  config.name = "new-haconiwa001" # to be hostname
+
+	root = Pathname.new("/var/tmp/deb001")
+
+  #config.bootstrap do |b|
+  #  b.strategy = "debootstrap"
+  #  b.strategy = "debootstrap"
+  #  b.variant = "minbase"
+  #  b.debian_release = "jessie"
+  #	b.mirror_url = "http://ftp.jp.debian.org/debian/"
+  #end
+
+  config.bootstrap do |b|
+    b.project_name = "ubuntu-lxc-boot001"
+    b.strategy = "lxc"
+    b.os_type = "ubuntu"
+	end
+
+
+  config.provision do |p|
+    p.run_shell "env"
+    #p.run_shell "apt-get autoclean"
+    #p.run_shell "apt-get -o Debug::Acquire::http=true update"
+    p.run_shell "DEBIAN_FRONTEND=nonintaractive apt-get install -y curl ca-certificates apt-transport-https"
+    p.run_shell "curl -s -k https://packages.cloud.google.com/apt/doc/apt-key.gpg > /var/tmp/apt-key.gpg"
+    p.run_shell "apt-key add /var/tmp/apt-key.gpg"
+    p.run_shell "echo deb http://apt.kubernetes.io/ kubernetes-xenial main | tee /etc/apt/sources.list.d/kubernetes.list"
+    p.run_shell "apt-get -y -o Debug::Acquire::http=true update"
+    p.run_shell "DEBIAN_FRONTEND=nonintaractive apt-get install -y docker.io kubelet kubeadm kubectl kubernetes-cni"
+  end
+
+  #config.cgroup["cpu.shares"] = 2048
+  #config.cgroup["memory.limit_in_bytes"] = 256 * 1024 * 1024
+  #config.cgroup["pids.max"] = 1024
+
+  config.mount_independent "procfs"
+  config.mount_independent "sysfs"
+  config.mount_independent "procfs"
+  config.mount_independent "sysfs"
+
+  #config.add_mount_point "/var/another/root/etc", to: "/var/your_rootfs/etc", readonly: true
+  #config.add_mount_point "/var/another/root/home", to: "/var/your_rootfs/home"
+
+
+  #config.chroot_to "/var/your_rootfs"
+
+  config.namespace.unshare "ipc"
+  config.namespace.unshare "uts"
+  config.namespace.unshare "mount"
+  config.namespace.unshare "pid"
+
+  #config.capabilities.allow :all
+  #config.capabilities.drop "cap_sys_admin"
+
+	#config.add_mount_point root, to: root
+  #config.mount_independent_procfs
+
+  config.chroot_to root
+
+  config.environ = {
+    "DEBIAN_FRONTEND" => "nonintaractive",
+    "TERM" => "xterm",
+    "LANG" => "c"
+  }
+end
