@@ -2,7 +2,7 @@
 
 Haconiwa.define do |config|
   # The container name and container's hostname:
-  config.name = "new-haconiwa001"
+  config.name = "deb001"
 
   # The first process when invoking haconiwa run:
   # config.init_command = "/sbin/init"
@@ -25,12 +25,14 @@ Haconiwa.define do |config|
   config.bootstrap do |b|
     b.strategy = "lxc"
     b.os_type = "ubuntu"
+    b.project_name = "deb001"
   end
 
   config.provision do |p|
     p.run_shell "env"
     #p.run_shell "apt-get autoclean"
     #p.run_shell "apt-get -o Debug::Acquire::http=true update"
+    p.run_shell "DEBIAN_FRONTEND=nonintaractive apt-get -y purge openssh-server"
     p.run_shell "DEBIAN_FRONTEND=nonintaractive apt-get install -y curl ca-certificates apt-transport-https"
     p.run_shell "curl -s -k https://packages.cloud.google.com/apt/doc/apt-key.gpg > /var/tmp/apt-key.gpg"
     p.run_shell "apt-key add /var/tmp/apt-key.gpg"
@@ -40,15 +42,16 @@ Haconiwa.define do |config|
     p.run_shell "test -e /dev/xconsole || mknod -m 640 /dev/xconsole c 1 3"
     p.run_shell "chown syslog:adm /dev/xconsole"
     p.run_shell "kubeadm reset"
+    p.run_shell "rm /etc/apparmor.d/docker"
   end
 
   # Check that the required binary is installed(lxc-create / debootstrap)
 
   # mount point configuration:
-  config.add_mount_point "tmpfs", to: root.join("tmp"), fs: "tmpfs"
-  config.add_mount_point "tmpfs", to: root.join("run"), fs: "tmpfs"
-
-  config.add_mount_point "/sys", to: root.join("sys"), readonly: true
+  # config.add_mount_point "tmpfs", to: root.join("tmp"), fs: "tmpfs"
+  # config.add_mount_point "tmpfs", to: root.join("run"), fs: "tmpfs"
+  #config.add_mount_point "/run", to: root.join("run"), fs: "tmpfs"
+  # config.add_mount_point "/sys", to: root.join("sys"), readonly: true
 
   #config.add_mount_point "devpts", to: root.join("dev", "pts"), fs: "devpts"
 
@@ -68,7 +71,7 @@ Haconiwa.define do |config|
   # These are recommended when namespaces such as pid and net are unshared:
   
   config.mount_independent "procfs"
-  #config.mount_independent "sysfs"
+  config.mount_independent "sysfs"
   config.mount_independent "devtmpfs"
   config.mount_independent "devpts"
   config.mount_independent "shm"
@@ -106,14 +109,18 @@ Haconiwa.define do |config|
   config.capabilities.reset_to_privileged!
 
   # Then declare:
-  # config.capabilities.allow :all
+  #config.capabilities.allow :all
+  config.capabilities.drop "cap_sys_boot"
+  config.attached_capabilities.drop "cap_sys_boot"
 
   # config.capabilities.drop "cap_sys_time"
   # config.capabilities.drop "cap_kill"
 
   # When you use whitelist capability, set:
   #GOOD??
+  config.attached_capabilities.allow "cap_sys_admin"
   config.capabilities.allow "cap_sys_admin"
+
   config.capabilities.allow "cap_kill"
   config.capabilities.allow "cap_fsetid"
   config.capabilities.allow "cap_chown"
@@ -148,6 +155,19 @@ Haconiwa.define do |config|
   config.capabilities.allow "cap_mac_override"
   config.capabilities.allow "cap_mac_admin"
   config.capabilities.allow "cap_sys_boot"
+
+  ##config.capabilities.allow 9
+  ###config.capabilities.allow 20
+  ##config.capabilities.allow 26
+  ##config.capabilities.allow 35
+  ##config.capabilities.allow 36
+  ##config.capabilities.allow 37
+
+  #config.capabilities.allow "cap_fowner"
+  #config.capabilities.allow "cap_linux_immutable"
+  #config.capabilities.allow "cap_sys_ptrace"
+  #config.capabilities.allow "cap_sys_pacct"
+
 
 
   # Specify uid/gid who owns container process:
