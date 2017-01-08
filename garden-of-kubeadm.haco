@@ -37,24 +37,28 @@ Haconiwa.define do |config|
     p.run_shell "echo deb http://apt.kubernetes.io/ kubernetes-xenial main | tee /etc/apt/sources.list.d/kubernetes.list"
     p.run_shell "apt-get -y -o Debug::Acquire::http=true update"
     p.run_shell "DEBIAN_FRONTEND=nonintaractive apt-get install -y linux-image-4.4.0-57-generic docker.io kubelet kubeadm kubectl kubernetes-cni"
-    #p.run_shell "kubeadm init"
+    p.run_shell "test -e /dev/xconsole || mknod -m 640 /dev/xconsole c 1 3"
+    p.run_shell "chown syslog:adm /dev/xconsole"
+    p.run_shell "kubeadm reset"
   end
 
   # Check that the required binary is installed(lxc-create / debootstrap)
 
   # mount point configuration:
   config.add_mount_point "tmpfs", to: root.join("tmp"), fs: "tmpfs"
-  config.add_mount_point "devpts", to: root.join("dev", "pts"), fs: "devpts"
+  config.add_mount_point "tmpfs", to: root.join("run"), fs: "tmpfs"
+
+  config.add_mount_point "/sys", to: root.join("sys"), readonly: true
+
+  #config.add_mount_point "devpts", to: root.join("dev", "pts"), fs: "devpts"
 
   # Share network etc files from host to contianer
   # You can reuse /etc/netns/${netnsname}/* files:
-  config.mount_network_etc(root, host_root: "/etc")
-
+  
+  #config.mount_network_etc(root, host_root: "/etc")
   config.network_mountpoint << MountPoint.new("/var/run/resolvconf/resolv.conf", to: "#{root}/etc/resolvconf/resolv.conf.d/tail")
 
   #config.network_mountpoint << MountPoint.new("#{from}/hosts",       to: "#{root}/etc/hosts")
-
-
 
   # more mount point configuration example:
   # config.add_mount_point root, to: root, readonly: true
@@ -62,10 +66,11 @@ Haconiwa.define do |config|
 
   # Re-mount specific filesystems under new container namespace
   # These are recommended when namespaces such as pid and net are unshared:
+  
   config.mount_independent "procfs"
-  config.mount_independent "sysfs"
+  #config.mount_independent "sysfs"
   config.mount_independent "devtmpfs"
-  #config.mount_independent "devpts"
+  config.mount_independent "devpts"
   config.mount_independent "shm"
 
   # The namespaces to unshare:
@@ -74,6 +79,16 @@ Haconiwa.define do |config|
   config.namespace.unshare "uts"
   config.namespace.unshare "pid"
 
+  #config.namespace.unshare "net"
+  #config.namespace.unshare ::Namespace::CLONE_NEWNS
+
+  #    "ipc"    => ::Namespace::CLONE_NEWIPC,
+  #    "net"    => ::Namespace::CLONE_NEWNET,
+  #    "mount"  => ::Namespace::CLONE_NEWNS,
+  #    "pid"    => ::Namespace::CLONE_NEWPID,
+  #    "user"   => ::Namespace::CLONE_NEWUSER,
+  #    "uts"    => ::Namespace::CLONE_NEWUTS,
+
   # You can use existing namespace via symlink file. e.g.:
   # config.namespace.enter "net", via: "/var/run/netns/sample001"
 
@@ -81,46 +96,58 @@ Haconiwa.define do |config|
   # config.cgroup["cpu.cfs_period_us"] = 100000
   # config.cgroup["cpu.cfs_quota_us"]  =  30000
 
+  config.environ = {
+    "CONTAINER" => "docker"
+  }
+
   # The linux kernel capability:
   # Haconiwa has default capability whitelist and applies it when there's no config
   # If you want to use customized blacklist, first uncomment below:
   config.capabilities.reset_to_privileged!
 
   # Then declare:
-  config.capabilities.allow :all
+  # config.capabilities.allow :all
 
   # config.capabilities.drop "cap_sys_time"
   # config.capabilities.drop "cap_kill"
 
   # When you use whitelist capability, set:
   #GOOD??
-  #config.capabilities.allow "cap_sys_admin"
-  #config.capabilities.allow "cap_kill"
-  #config.capabilities.allow "cap_fsetid"
-  #config.capabilities.allow "cap_chown"
-  #config.capabilities.allow "cap_sys_time"
-  #config.capabilities.allow "cap_sys_module"
-  #config.capabilities.allow "cap_sys_resource"
-  #config.capabilities.allow "cap_net_admin"
-  #config.capabilities.allow "cap_net_bind_service"
-  #config.capabilities.allow "cap_sys_chroot"
-  #config.capabilities.allow "cap_sys_nice"
-  #config.capabilities.allow "cap_net_broadcast"
-  #config.capabilities.allow "cap_setfcap"
-  #config.capabilities.allow "cap_setgid"
-  #config.capabilities.allow "cap_setuid"
-  #config.capabilities.allow "cap_fowner"
-  #config.capabilities.allow "cap_lease"
-  #config.capabilities.allow "cap_mknod"
-  #config.capabilities.allow "cap_audit_write"
-  #config.capabilities.allow "cap_sys_nice"
-  #config.capabilities.allow "cap_ipc_lock"
-  #config.capabilities.allow "cap_ipc_owner"
-  #config.capabilities.allow "cap_net_raw"
-  #config.capabilities.allow "cap_setpcap"
-  #config.capabilities.allow "cap_sys_ptrace"
-  #config.capabilities.allow "cap_sys_rawio"
-  #config.capabilities.allow "cap_syslog"
+  config.capabilities.allow "cap_sys_admin"
+  config.capabilities.allow "cap_kill"
+  config.capabilities.allow "cap_fsetid"
+  config.capabilities.allow "cap_chown"
+  config.capabilities.allow "cap_sys_time"
+  config.capabilities.allow "cap_sys_module"
+  config.capabilities.allow "cap_sys_resource"
+  config.capabilities.allow "cap_net_admin"
+  config.capabilities.allow "cap_net_raw"
+  config.capabilities.allow "cap_net_bind_service"
+  config.capabilities.allow "cap_sys_chroot"
+  config.capabilities.allow "cap_sys_nice"
+  config.capabilities.allow "cap_net_broadcast"
+  config.capabilities.allow "cap_setfcap"
+  config.capabilities.allow "cap_setgid"
+  config.capabilities.allow "cap_setuid"
+  config.capabilities.allow "cap_fowner"
+  config.capabilities.allow "cap_lease"
+  config.capabilities.allow "cap_mknod"
+  config.capabilities.allow "cap_audit_write"
+  config.capabilities.allow "cap_sys_nice"
+  config.capabilities.allow "cap_ipc_lock"
+  config.capabilities.allow "cap_ipc_owner"
+  config.capabilities.allow "cap_net_raw"
+  config.capabilities.allow "cap_setpcap"
+  config.capabilities.allow "cap_sys_ptrace"
+  config.capabilities.allow "cap_sys_rawio"
+  config.capabilities.allow "cap_syslog"
+  config.capabilities.allow "cap_dac_override"
+  config.capabilities.allow "cap_dac_read_search"
+  config.capabilities.allow "cap_audit_write"
+  config.capabilities.allow "cap_audit_control"
+  config.capabilities.allow "cap_mac_override"
+  config.capabilities.allow "cap_mac_admin"
+  config.capabilities.allow "cap_sys_boot"
 
 
   # Specify uid/gid who owns container process:
